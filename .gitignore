@@ -111,3 +111,6 @@ typechain
 #Hardhat files
 cache
 artifacts
+
+/images
+/data
