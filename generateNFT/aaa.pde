@@ -3,10 +3,10 @@ int metadataCounter = 0;
 JSONObject json;
 JSONArray jsonArray; 
 JSONArray metadata = new JSONArray();
-String[] colors = { "Red", "Blue", "Green" };
+String[] colors = { "Red", "Green", "Blue" };
 int[] counters = { 0, 0, 0};
 void setup() {
-  size(800,800);
+  size(900,900);
   background(0);
   if(l < 101){
     counters[0] = 0;
@@ -22,13 +22,13 @@ void setup() {
 
 
 void init() {
-  println (random(10));
+  //println (random(10));
   int i = 0;
-  while (i <9){
+  while (i < 9){
     i = i+1;
-    println(i);
+    //print(i);
     int j = 1;
-    while (j < 9) {
+    while (j < 10) {
       print(j + " ");
       int posX = i * 90;
       int posY = j * 90;
@@ -53,7 +53,7 @@ void init() {
     }
   }
   println("we are done");
-  save("test" + l + ".png");
+  save("images/" + l + ".png");
       json = new JSONObject();
       jsonArray = new JSONArray();
       JSONArray values = new JSONArray();
@@ -74,7 +74,7 @@ void init() {
   metadata.setJSONObject(metadataCounter,json);
   metadataCounter++;
     
-  saveJSONObject(json, "data/new" + l + ".json");
+  saveJSONObject(json, "data/" + l);
   l = l + 1;
   setup();
 }
