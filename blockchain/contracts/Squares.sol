@@ -15,6 +15,7 @@ contract Squares is ERC721Enumerable, Ownable {
     bool public paused = false;
     string public ProvenanceHash = "";
     mapping(address => bool) public whitelisted;
+    bool public locked = false;
 
     constructor(string memory _name, string memory _symbol)
         ERC721(_name, _symbol)
@@ -69,7 +70,9 @@ contract Squares is ERC721Enumerable, Ownable {
     }
 
     function setBaseURI(string memory _newBaseURI) public onlyOwner {
+        require(locked == false);
         baseURI = _newBaseURI;
+        locked = true;
     }
 
     function setProvenanceHash(string memory provenanceHash) public onlyOwner {
@@ -88,7 +91,7 @@ contract Squares is ERC721Enumerable, Ownable {
         whitelisted[_user] = false;
     }
 
-    function withdraw() public payable onlyOwner {
+    function withdraw() public onlyOwner {
         uint256 balance = address(this).balance;
         payable(msg.sender).transfer(balance);
     }
