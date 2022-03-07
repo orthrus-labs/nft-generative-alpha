@@ -7,7 +7,7 @@ describe("Squares Contract", function () {
     [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners()
     //deploying contracts
     Squares = await ethers.getContractFactory('Squares');
-    squares = await Squares.deploy("Test", "test");
+    squares = await Squares.deploy("name", "symbol", "notRevealedUri", "provenanceHash");
     await squares.deployed();
   });
   describe("Owner", async function () {
@@ -48,20 +48,24 @@ describe("Squares Contract", function () {
     });
   });
 
-  describe("BaseURi", async () => {
-    it("Should set the correct URI", async ()  => {
-      await squares.setBaseURI("test", {from: owner.address});
-      expect(await squares.baseURI()).to.equal("test");
+  describe("BaseURi and Reveal", async () => {
+    it("Should set the initial TokenURIs  equal to notRevealedUri", async ()  => {
+      expect(await squares.tokenURI(1)).to.equal("notRevealedUri");
+      expect(await squares.tokenURI(2)).to.equal("notRevealedUri");
+      expect(await squares.tokenURI(3)).to.equal("notRevealedUri");
     })
-    it("Should set the correct TokenURI", async ()  => {
-      expect(await squares.tokenURI(1)).to.equal("test1");
+    it("Should set the correct TokenURI after the reveal", async ()  => {
+      //await squares.setBaseURI("test/",{from: owner.address});
+      await squares.reveal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-",{from:owner.address});
+      expect(await squares.tokenURI(1)).to.equal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-1");
+      expect(await squares.tokenURI(2)).to.equal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-2");
+      expect(await squares.tokenURI(3)).to.equal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-3");
     })
     it("Shouldn't allow anyone to change the baseURI more than one time", async ()  => {
       try{
         await squares.setBaseURI("newTest" ,{from: owner.address});
       }catch(err){
         expect(err).to.not.be.undefined;
-        expect(await squares.tokenURI(1)).to.equal("test1");
       } 
     })
   });
@@ -77,7 +81,7 @@ describe("Squares Contract", function () {
 
   describe("Provenance Hash", async () => {
     it("Should set the initial provenance hahs to an empty string", async ()  => {
-      expect(await squares.ProvenanceHash()).to.be.equal("");
+      expect(await squares.ProvenanceHash()).to.be.equal("provenanceHash");
     })
     it("Should allow the user to change the provenance hash", async ()  => {
       await squares.setProvenanceHash("AAA", {from : owner.address});
