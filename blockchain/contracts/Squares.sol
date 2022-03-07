@@ -16,10 +16,14 @@ contract Squares is ERC721Enumerable, Ownable {
     string public ProvenanceHash = "";
     mapping(address => bool) public whitelisted;
     bool public locked = false;
+    bool public revealed = false;
+    string public notRevealedUri;
 
-    constructor(string memory _name, string memory _symbol)
+    constructor(string memory _name, string memory _symbol, string memory _notRevealedUri, string memory _provenanceHash)
         ERC721(_name, _symbol)
     {
+        notRevealedUri = _notRevealedUri;
+        ProvenanceHash = _provenanceHash;
         mint(msg.sender, 3);
     }
 
@@ -45,6 +49,33 @@ contract Squares is ERC721Enumerable, Ownable {
         for (uint256 i = 1; i <= _mintAmount; i++) {
             _safeMint(_to, supply + i);
         }
+    }
+
+    function tokenURI(uint256 tokenId)
+    public
+    view
+    virtual
+    override
+    returns (string memory)
+    {
+        require(
+        _exists(tokenId),
+        "ERC721Metadata: URI query for nonexistent token"
+        );
+        
+        if(revealed == false) {
+            return notRevealedUri;
+        }
+
+        string memory currentBaseURI = _baseURI();
+        return bytes(currentBaseURI).length > 0
+            ? string(abi.encodePacked(currentBaseURI, tokenId.toString()))
+            : "";
+    }
+
+    function reveal(string memory newURI) public onlyOwner {
+        setBaseURI(newURI);
+        revealed = true;
     }
 
     function walletOfOwner(address _owner)
