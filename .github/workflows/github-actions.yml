@@ -15,12 +15,11 @@ jobs:
         uses: actions/setup-node@v2.1.5
         with:
           node-version: 16
-      
-      - name: Open blockchain folder
-        run: cd blockchain
 
       - name: Install node dependencies
-        run: npm install
+      run: |
+        cd .\blockchain\
+        npm install
 
       - name: Run contract test
         run:  npm run test
