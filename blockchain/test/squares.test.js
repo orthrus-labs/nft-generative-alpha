@@ -24,6 +24,12 @@ describe("Squares Contract", function () {
       expect(await squares.ownerOf(3)).to.equal(owner.address);
     });
     it("Should mint the selected amount of NFTs", async () => {
+      try{
+        await squares.connect(addr1).mint(addr1.address, 1 ,{from: addr1.address, value:0});
+      }catch(err){
+        expect(err).to.not.be.undefined;
+        console.log(err);
+      } 
       await squares.connect(addr1).mint(addr1.address, 5 ,{from: addr1.address, value:ethers.constants.WeiPerEther});
       expect(await squares.totalSupply()).to.equal(8);
     });
@@ -37,8 +43,8 @@ describe("Squares Contract", function () {
       }      
     });
     it("Should change the base price", async () => {
-      await squares.setCost(0, {from: owner.address});
-      expect(await squares.cost()).to.equal(0);
+      await squares.setCost(100, {from: owner.address});
+      expect(await squares.cost()).to.equal(100);
       //only the owner can change the base price
       try{
         await squares.connect(addr1).setCost(0 ,{from: addr1.address});
@@ -86,6 +92,36 @@ describe("Squares Contract", function () {
     it("Should allow the user to change the provenance hash", async ()  => {
       await squares.setProvenanceHash("AAA", {from : owner.address});
       expect(await squares.ProvenanceHash()).to.be.equal("AAA");
+    })
+  });
+
+  describe("Whitelist", async () => {
+    it("Should set the isWhiteListActive variable to true", async ()  => {
+      await squares.setIsWhiteListActive(true, {from: owner.address});
+      expect(await squares.isWhiteListActive()).to.equal(true);
+    })
+    it("Should add addr2 to the whitelist and give it 5 NFTs available to mint with the mintWhiteList function", async ()  => {
+      await squares.setWhiteList([addr2.address], 5, {from: owner.address});
+      expect(await squares.numAvailableToMint(addr2.address)).to.equal(5);
+      try{
+        await squares.connect(addr2).mintWhiteList(5, {from: addr2.address, value: 0});
+      }catch(err){
+        expect(err).to.not.be.undefined;
+        console.log(err);
+        console.log(await squares.totalSupply())
+        console.log(await squares.cost())
+      } 
+    })
+    it("Should let addr2 to mint 5 NFTs with the mintWhiteList function", async ()  => {
+      console.log(await squares.totalSupply())
+      await squares.connect(addr2).mintWhiteList(5, {from: addr2.address, value: 500});
+      expect(await squares.balanceOf(addr2.address)).to.equal(5);
+      expect(await squares.numAvailableToMint(addr2.address)).to.equal(0);
+      try{
+        await squares.connect(addr2).mintWhiteList(1, {from: addr2.address, value:ethers.constants.WeiPerEther});
+      }catch(err){
+        expect(err).to.not.be.undefined;
+      } 
     })
   });
 
