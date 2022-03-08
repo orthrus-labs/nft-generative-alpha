@@ -14,9 +14,10 @@ contract Squares is ERC721Enumerable, Ownable {
     uint256 public maxMintAmount = 5;
     bool public paused = false;
     string public ProvenanceHash = "";
-    mapping(address => bool) public whitelisted;
+    mapping(address => uint256) private whitelist;
     bool public locked = false;
     bool public revealed = false;
+    bool public isWhiteListActive = false;
     string public notRevealedUri;
 
     constructor(string memory _name, string memory _symbol, string memory _notRevealedUri, string memory _provenanceHash)
@@ -35,15 +36,13 @@ contract Squares is ERC721Enumerable, Ownable {
     // public
     function mint(address _to, uint256 _mintAmount) public payable {
         uint256 supply = totalSupply();
-        require(!paused);
-        require(_mintAmount > 0);
-        require(_mintAmount <= maxMintAmount);
-        require(supply + _mintAmount <= maxSupply);
+        require(!paused, "The mint function is paused");
+        require(_mintAmount > 0, "You must mint at least 1 NFT");
+        require(_mintAmount <= maxMintAmount, "Max mint amount exceeded");
+        require(supply + _mintAmount <= maxSupply, "Max supply exceeded");
 
         if (msg.sender != owner()) {
-            if (whitelisted[msg.sender] != true) {
-                require(msg.value >= cost * _mintAmount);
-            }
+            require(msg.value >= cost * _mintAmount,"Ether value sent is not correct");
         }
 
         for (uint256 i = 1; i <= _mintAmount; i++) {
@@ -114,12 +113,33 @@ contract Squares is ERC721Enumerable, Ownable {
         paused = _state;
     }
 
-    function whitelistUser(address _user) public onlyOwner {
-        whitelisted[_user] = true;
+    function setIsWhiteListActive(bool _isWhiteListActive) external onlyOwner {
+        isWhiteListActive = _isWhiteListActive;
     }
 
-    function removeWhitelistUser(address _user) public onlyOwner {
-        whitelisted[_user] = false;
+    function setWhiteList(address[] calldata addresses, uint256 numAllowedToMint) external onlyOwner {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            whitelist[addresses[i]] = numAllowedToMint;
+        }
+    }
+
+    function mintWhiteList(uint256 numberOfTokens) external payable {
+        uint256 supply = totalSupply();
+        require(isWhiteListActive, "Allow list is not active");
+        require(numberOfTokens <= whitelist[msg.sender], "Exceeded max available to purchase");
+        require(numberOfTokens > 0, "You must mint at least 1 NFT");
+        require(numberOfTokens <= maxMintAmount, "Max mint amount exceeded");
+        require(supply + numberOfTokens <= maxSupply, "Max supply exceeded");
+        require(msg.value >= cost * numberOfTokens, "Ether value sent is not correct");
+
+        whitelist[msg.sender] -= numberOfTokens;
+        for (uint256 i = 1; i <= numberOfTokens; i++) {
+            _safeMint(msg.sender, supply + i);
+        }
+    }
+
+    function numAvailableToMint(address addr) external view returns (uint256) {
+        return whitelist[addr];
     }
 
     function withdraw() public onlyOwner {
