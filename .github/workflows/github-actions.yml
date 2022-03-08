@@ -5,8 +5,8 @@ jobs:
   echidna:
     name: CI
     runs-on: ubuntu-latest
-    # env:
-    #   MNEMONIC: ${{ secrets.MNEMONIC }}
+    env:
+      MNEMONIC: ${{ secrets.MNEMONIC }}
 
     steps:
       - uses: actions/checkout@v2.3.4
