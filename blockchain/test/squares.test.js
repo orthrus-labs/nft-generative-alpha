@@ -4,7 +4,7 @@ const { ethers } = require("hardhat");
 describe("Squares Contract", function () {
   before(async () => {
     //get Signers
-    [owner, addr1, addr2, addr3, ...addrs] = await ethers.getSigners()
+    [owner, royaltiesAddress, addr1, addr2, addr3, ...addrs] = await ethers.getSigners()
     //deploying contracts
     Squares = await ethers.getContractFactory('Squares');
     squares = await Squares.deploy("name", "symbol", "notRevealedUri", "provenanceHash");
@@ -122,6 +122,20 @@ describe("Squares Contract", function () {
       }catch(err){
         expect(err).to.not.be.undefined;
       } 
+    })
+  });
+
+  describe("Royalties", async () => {
+    it("Should set the correct address for the royalties wallet", async ()  => {
+      squares.setRoyaltiesWallet(royaltiesAddress.address, {from: owner.address});
+      expect(await squares.royaltiesWallet()).to.be.equal(royaltiesAddress.address);
+    })
+    it("Should return the correct royalty info", async ()  => {
+      const royaltyInfo = await squares.royaltyInfo(1, 10000)
+      console.log(royaltyInfo);
+      expect(royaltyInfo[1]).to.eq(500)
+      expect(royaltyInfo[0]).to.eq(royaltiesAddress.address)
+      
     })
   });
 

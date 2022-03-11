@@ -4,8 +4,9 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
-contract Squares is ERC721Enumerable, Ownable {
+contract Squares is ERC721Enumerable, Ownable, IERC2981 {
     using Strings for uint256;
 
     string public baseURI;
@@ -19,6 +20,7 @@ contract Squares is ERC721Enumerable, Ownable {
     bool public revealed = false;
     bool public isWhiteListActive = false;
     string public notRevealedUri;
+    address public royaltiesWallet;
 
     constructor(string memory _name, string memory _symbol, string memory _notRevealedUri, string memory _provenanceHash)
         ERC721(_name, _symbol)
@@ -113,6 +115,7 @@ contract Squares is ERC721Enumerable, Ownable {
         paused = _state;
     }
 
+    //whitelist
     function setIsWhiteListActive(bool _isWhiteListActive) external onlyOwner {
         isWhiteListActive = _isWhiteListActive;
     }
@@ -140,6 +143,21 @@ contract Squares is ERC721Enumerable, Ownable {
 
     function numAvailableToMint(address addr) external view returns (uint256) {
         return whitelist[addr];
+    }
+
+    //royalties
+    function setRoyaltiesWallet(address _royaltiesWallet) public onlyOwner {
+        royaltiesWallet = _royaltiesWallet;
+    }
+
+    function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external view returns (address , uint256 ) {
+        _tokenId; // silence solc warning
+        uint256 royaltyAmount = (_salePrice / 100) * 5;
+        return (royaltiesWallet, royaltyAmount);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721Enumerable, IERC165) returns (bool) {
+        return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function withdraw() public onlyOwner {
