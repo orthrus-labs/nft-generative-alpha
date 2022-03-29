@@ -7,7 +7,7 @@ describe("Squares Contract", function () {
     [owner, royaltiesAddress, addr1, addr2, addr3, ...addrs] = await ethers.getSigners()
     //deploying contracts
     Squares = await ethers.getContractFactory('Squares');
-    squares = await Squares.deploy("name", "symbol", "notRevealedUri", "provenanceHash");
+    squares = await Squares.deploy("name", "symbol", "notRevealedUri", "");
     await squares.deployed();
   });
   describe("Owner", async function () {
@@ -24,118 +24,93 @@ describe("Squares Contract", function () {
       expect(await squares.ownerOf(3)).to.equal(owner.address);
     });
     it("Should mint the selected amount of NFTs", async () => {
-      try{
-        await squares.connect(addr1).mint(addr1.address, 1 ,{from: addr1.address, value:0});
-      }catch(err){
-        expect(err).to.not.be.undefined;
-        console.log(err);
-      } 
-      await squares.connect(addr1).mint(addr1.address, 5 ,{from: addr1.address, value:ethers.constants.WeiPerEther});
+      await expect(squares.connect(addr1).mint(addr1.address, 1, { from: addr1.address, value: 0 })).to.be.revertedWith("Ether value sent is not correct")
+      await squares.connect(addr1).mint(addr1.address, 5, { from: addr1.address, value: ethers.utils.parseEther("0.05") });
+      expect(await squares.totalSupply()).to.equal(8);
+    });
+    it("Shouldn't allow a user to mint more than 5 NFTs", async () => {
+      await expect(squares.mint(owner.address, 6, { from: owner.address, value: ethers.utils.parseEther("0.06") })).to.be.revertedWith('Max mint amount exceeded')
       expect(await squares.totalSupply()).to.equal(8);
     });
     it("Shouldn't allow a user to mint when the contract is paused", async () => {
-      await squares.connect(owner).pause(true ,{from: owner.address});
+      await squares.connect(owner).pause(true, { from: owner.address });
       expect(await squares.paused()).to.equal(true);
-      try{
-        await squares.connect(addr1).mint(addr1.address, 5 ,{from: addr1.address, value:ethers.constants.WeiPerEther});
-      }catch(err){
-        expect(err).to.not.be.undefined;
-      }      
+      await expect(squares.connect(addr1).mint(addr1.address, 5, { from: addr1.address, value: ethers.utils.parseEther("0.05")})).to.be.revertedWith('The mint function is paused')
+      expect(await squares.totalSupply()).to.equal(8);
     });
     it("Should change the base price", async () => {
-      await squares.setCost(100, {from: owner.address});
+      await squares.setCost(100, { from: owner.address });
       expect(await squares.cost()).to.equal(100);
       //only the owner can change the base price
-      try{
-        await squares.connect(addr1).setCost(0 ,{from: addr1.address});
-      }catch(err){
-        expect(err).to.not.be.undefined;
-      } 
+      await expect(squares.connect(addr1).setCost(0, { from: addr1.address })).to.be.revertedWith('Ownable: caller is not the owner')
+      expect(await squares.cost()).to.equal(100);
     });
   });
 
   describe("BaseURi and Reveal", async () => {
-    it("Should set the initial TokenURIs  equal to notRevealedUri", async ()  => {
+    it("Should set the initial TokenURIs  equal to notRevealedUri", async () => {
       expect(await squares.tokenURI(1)).to.equal("notRevealedUri");
       expect(await squares.tokenURI(2)).to.equal("notRevealedUri");
       expect(await squares.tokenURI(3)).to.equal("notRevealedUri");
     })
-    it("Should set the correct TokenURI after the reveal", async ()  => {
+    it("Should set the correct TokenURI after the reveal", async () => {
       //await squares.setBaseURI("test/",{from: owner.address});
-      await squares.reveal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-",{from:owner.address});
+      await squares.reveal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-", { from: owner.address });
       expect(await squares.tokenURI(1)).to.equal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-1");
       expect(await squares.tokenURI(2)).to.equal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-2");
       expect(await squares.tokenURI(3)).to.equal("ipfs://QmUZCdKUv6Kj6CrkpAkyTN3prbdNv1g7eqUDAyRHSjZLg9/opera-3");
     })
-    it("Shouldn't allow anyone to change the baseURI more than one time", async ()  => {
-      try{
-        await squares.setBaseURI("newTest" ,{from: owner.address});
-      }catch(err){
-        expect(err).to.not.be.undefined;
-      } 
+    it("Shouldn't allow anyone to change the baseURI more than one time", async () => {
+      await expect(squares.setBaseURI("newTest", { from: owner.address })).to.be.revertedWith('The base URI cannot be changed again');
     })
   });
 
   describe("Withdraw", async () => {
-    it("Should let the owner withdraw ether from the contract", async ()  => {
+    it("Should let the owner withdraw ether from the contract", async () => {
       const initialBalance = await ethers.provider.getBalance(owner.address);
-      await squares.withdraw({from: owner.address});
+      await squares.withdraw({ from: owner.address });
       const finalBalance = await ethers.provider.getBalance(owner.address);
       expect(finalBalance).to.be.above(initialBalance);
     })
   });
 
   describe("Provenance Hash", async () => {
-    it("Should set the initial provenance hahs to an empty string", async ()  => {
-      expect(await squares.ProvenanceHash()).to.be.equal("provenanceHash");
+    it("Should set the initial provenance hahs to an empty string", async () => {
+      expect(await squares.ProvenanceHash()).to.be.equal("");
     })
-    it("Should allow the user to change the provenance hash", async ()  => {
-      await squares.setProvenanceHash("AAA", {from : owner.address});
+    it("Should allow the user to change the provenance hash", async () => {
+      await squares.setProvenanceHash("AAA", { from: owner.address });
       expect(await squares.ProvenanceHash()).to.be.equal("AAA");
     })
   });
 
   describe("Whitelist", async () => {
-    it("Should set the isWhiteListActive variable to true", async ()  => {
-      await squares.setIsWhiteListActive(true, {from: owner.address});
+    it("Should set the isWhiteListActive variable to true", async () => {
+      await squares.setIsWhiteListActive(true, { from: owner.address });
       expect(await squares.isWhiteListActive()).to.equal(true);
     })
-    it("Should add addr2 to the whitelist and give it 5 NFTs available to mint with the mintWhiteList function", async ()  => {
-      await squares.setWhiteList([addr2.address], 5, {from: owner.address});
+    it("Should add addr2 to the whitelist and give it 5 NFTs available to mint with the mintWhiteList function", async () => {
+      await squares.setWhiteList([addr2.address], 5, { from: owner.address });
       expect(await squares.numAvailableToMint(addr2.address)).to.equal(5);
-      try{
-        await squares.connect(addr2).mintWhiteList(5, {from: addr2.address, value: 0});
-      }catch(err){
-        expect(err).to.not.be.undefined;
-        console.log(err);
-        console.log(await squares.totalSupply())
-        console.log(await squares.cost())
-      } 
+      await expect(squares.connect(addr2).mintWhiteList(5, { from: addr2.address, value: 0 })).to.be.revertedWith('Ether value sent is not correct')
     })
-    it("Should let addr2 to mint 5 NFTs with the mintWhiteList function", async ()  => {
-      console.log(await squares.totalSupply())
-      await squares.connect(addr2).mintWhiteList(5, {from: addr2.address, value: 500});
+    it("Should let addr2 to mint 5 NFTs with the mintWhiteList function", async () => {
+      await squares.connect(addr2).mintWhiteList(5, { from: addr2.address, value: 500 });
       expect(await squares.balanceOf(addr2.address)).to.equal(5);
       expect(await squares.numAvailableToMint(addr2.address)).to.equal(0);
-      try{
-        await squares.connect(addr2).mintWhiteList(1, {from: addr2.address, value:ethers.constants.WeiPerEther});
-      }catch(err){
-        expect(err).to.not.be.undefined;
-      } 
+      await expect(squares.connect(addr2).mintWhiteList(1, { from: addr2.address, value: ethers.utils.parseEther("0.01") })).to.be.revertedWith('Exceeded max available to purchase')
     })
   });
 
   describe("Royalties", async () => {
-    it("Should set the correct address for the royalties wallet", async ()  => {
-      squares.setRoyaltiesWallet(royaltiesAddress.address, {from: owner.address});
+    it("Should set the correct address for the royalties wallet", async () => {
+      squares.setRoyaltiesWallet(royaltiesAddress.address, { from: owner.address });
       expect(await squares.royaltiesWallet()).to.be.equal(royaltiesAddress.address);
     })
-    it("Should return the correct royalty info", async ()  => {
+    it("Should return the correct royalty info", async () => {
       const royaltyInfo = await squares.royaltyInfo(1, 10000)
-      console.log(royaltyInfo);
       expect(royaltyInfo[1]).to.eq(500)
       expect(royaltyInfo[0]).to.eq(royaltiesAddress.address)
-      
     })
   });
 
