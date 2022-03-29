@@ -22,12 +22,20 @@ contract Squares is ERC721Enumerable, Ownable, IERC2981 {
     string public notRevealedUri;
     address public royaltiesWallet;
 
-    constructor(string memory _name, string memory _symbol, string memory _notRevealedUri, string memory _provenanceHash)
-        ERC721(_name, _symbol)
-    {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        string memory _notRevealedUri,
+        string memory _provenanceHash
+    ) ERC721(_name, _symbol) {
         notRevealedUri = _notRevealedUri;
         ProvenanceHash = _provenanceHash;
         mint(msg.sender, 3);
+    }
+
+    modifier callerIsUser() {
+        require(tx.origin == msg.sender, "The caller is another contract");
+        _;
     }
 
     // internal
@@ -36,7 +44,7 @@ contract Squares is ERC721Enumerable, Ownable, IERC2981 {
     }
 
     // public
-    function mint(address _to, uint256 _mintAmount) public payable {
+    function mint(address _to, uint256 _mintAmount) public payable callerIsUser{
         uint256 supply = totalSupply();
         require(!paused, "The mint function is paused");
         require(_mintAmount > 0, "You must mint at least 1 NFT");
@@ -44,7 +52,10 @@ contract Squares is ERC721Enumerable, Ownable, IERC2981 {
         require(supply + _mintAmount <= maxSupply, "Max supply exceeded");
 
         if (msg.sender != owner()) {
-            require(msg.value >= cost * _mintAmount,"Ether value sent is not correct");
+            require(
+                msg.value >= cost * _mintAmount,
+                "Ether value sent is not correct"
+            );
         }
 
         for (uint256 i = 1; i <= _mintAmount; i++) {
@@ -53,25 +64,26 @@ contract Squares is ERC721Enumerable, Ownable, IERC2981 {
     }
 
     function tokenURI(uint256 tokenId)
-    public
-    view
-    virtual
-    override
-    returns (string memory)
+        public
+        view
+        virtual
+        override
+        returns (string memory)
     {
         require(
-        _exists(tokenId),
-        "ERC721Metadata: URI query for nonexistent token"
+            _exists(tokenId),
+            "ERC721Metadata: URI query for nonexistent token"
         );
-        
-        if(revealed == false) {
+
+        if (revealed == false) {
             return notRevealedUri;
         }
 
         string memory currentBaseURI = _baseURI();
-        return bytes(currentBaseURI).length > 0
-            ? string(abi.encodePacked(currentBaseURI, tokenId.toString()))
-            : "";
+        return
+            bytes(currentBaseURI).length > 0
+                ? string(abi.encodePacked(currentBaseURI, tokenId.toString()))
+                : "";
     }
 
     function reveal(string memory newURI) public onlyOwner {
@@ -102,7 +114,7 @@ contract Squares is ERC721Enumerable, Ownable, IERC2981 {
     }
 
     function setBaseURI(string memory _newBaseURI) public onlyOwner {
-        require(locked == false);
+        require(locked == false, 'The base URI cannot be changed again');
         baseURI = _newBaseURI;
         locked = true;
     }
@@ -120,20 +132,29 @@ contract Squares is ERC721Enumerable, Ownable, IERC2981 {
         isWhiteListActive = _isWhiteListActive;
     }
 
-    function setWhiteList(address[] calldata addresses, uint256 numAllowedToMint) external onlyOwner {
+    function setWhiteList(
+        address[] calldata addresses,
+        uint256 numAllowedToMint
+    ) external onlyOwner {
         for (uint256 i = 0; i < addresses.length; i++) {
             whitelist[addresses[i]] = numAllowedToMint;
         }
     }
 
-    function mintWhiteList(uint256 numberOfTokens) external payable {
+    function mintWhiteList(uint256 numberOfTokens) external payable callerIsUser{
         uint256 supply = totalSupply();
         require(isWhiteListActive, "Allow list is not active");
-        require(numberOfTokens <= whitelist[msg.sender], "Exceeded max available to purchase");
+        require(
+            numberOfTokens <= whitelist[msg.sender],
+            "Exceeded max available to purchase"
+        );
         require(numberOfTokens > 0, "You must mint at least 1 NFT");
         require(numberOfTokens <= maxMintAmount, "Max mint amount exceeded");
         require(supply + numberOfTokens <= maxSupply, "Max supply exceeded");
-        require(msg.value >= cost * numberOfTokens, "Ether value sent is not correct");
+        require(
+            msg.value >= cost * numberOfTokens,
+            "Ether value sent is not correct"
+        );
 
         whitelist[msg.sender] -= numberOfTokens;
         for (uint256 i = 1; i <= numberOfTokens; i++) {
@@ -150,14 +171,25 @@ contract Squares is ERC721Enumerable, Ownable, IERC2981 {
         royaltiesWallet = _royaltiesWallet;
     }
 
-    function royaltyInfo(uint256 _tokenId, uint256 _salePrice) external view returns (address , uint256 ) {
+    function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
+        external
+        view
+        returns (address, uint256)
+    {
         _tokenId; // silence solc warning
         uint256 royaltyAmount = (_salePrice / 100) * 5;
         return (royaltiesWallet, royaltyAmount);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721Enumerable, IERC165) returns (bool) {
-        return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721Enumerable, IERC165)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IERC2981).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     function withdraw() public onlyOwner {
