@@ -9,6 +9,9 @@ describe("Squares Contract", function () {
     Squares = await ethers.getContractFactory('Squares');
     squares = await Squares.deploy("name", "symbol", "notRevealedUri", "");
     await squares.deployed();
+    Test = await ethers.getContractFactory('Test');
+    test = await Test.deploy(squares.address);
+    await test.deployed();
   });
   describe("Owner", async function () {
     it("Should set the correct owner", async () => {
@@ -40,9 +43,6 @@ describe("Squares Contract", function () {
     });
     it("Should change the base price", async () => {
       await squares.setCost(100, { from: owner.address });
-      expect(await squares.cost()).to.equal(100);
-      //only the owner can change the base price
-      await expect(squares.connect(addr1).setCost(0, { from: addr1.address })).to.be.revertedWith('Ownable: caller is not the owner')
       expect(await squares.cost()).to.equal(100);
     });
   });
@@ -113,5 +113,30 @@ describe("Squares Contract", function () {
       expect(royaltyInfo[0]).to.eq(royaltiesAddress.address)
     })
   });
+
+  describe("Caller is user", async () => {
+    it("Shouldn't mint from Test contract", async () => {
+      await expect(test.callMint({from: owner.address})).to.be.revertedWith("The caller is another contract");
+      await expect(test.callMintWhitelist({from: owner.address})).to.be.revertedWith("The caller is another contract");
+    })
+  })
+
+  describe("Owner", async () => {
+    it("Should set the correct owner", async () => {
+      expect(await squares.owner()).to.eq(owner.address)
+    })
+    it("Shouldn't allow addr1 to call only owner functions", async () => {
+      await expect(squares.connect(addr1).setCost(100, {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).setmaxMintAmount(100, {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).setBaseURI('newBaseURI', {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).setProvenanceHash('newProvenanceHash', {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).pause(true, {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).setIsWhiteListActive(false, {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).setWhiteList([addr1.address], 5, {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).setRoyaltiesWallet(addr1.address, {from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).withdraw({from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+      await expect(squares.connect(addr1).reveal('newURI',{from: addr1.address})).to.be.revertedWith('Ownable: caller is not the owner')
+    })
+  })
 
 });
